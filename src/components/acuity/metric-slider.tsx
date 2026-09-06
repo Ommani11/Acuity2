@@ -1,3 +1,6 @@
+import { useId, useState } from "react";
+import { CircleHelp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import type { MetricKey } from "@/lib/acuity/metrics";
@@ -17,17 +20,41 @@ export function MetricSlider({
   optional = false,
 }: MetricSliderProps) {
   const metric = METRICS.find((item) => item.key === metricKey);
+  const hintId = useId();
+  const [showHint, setShowHint] = useState(false);
   if (!metric) return null;
   const display = value ?? 3;
+  const skipped = optional && value == null;
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between gap-3">
-        <Label>{metric.label}</Label>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <Label>{metric.label}</Label>
+          <button
+            type="button"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-expanded={showHint}
+            aria-controls={hintId}
+            onClick={() => setShowHint((open) => !open)}
+          >
+            <CircleHelp className="size-4" aria-hidden="true" />
+            <span className="sr-only">What {metric.label.toLowerCase()} measures</span>
+          </button>
+        </div>
         <span className="text-sm tabular-nums text-muted-foreground">
-          {value == null && optional ? "Skipped" : display}
+          {skipped ? "Skipped" : display}
         </span>
       </div>
+      {showHint ? (
+        <p id={hintId} className="text-sm text-muted-foreground">
+          {metric.hint}
+        </p>
+      ) : (
+        <span id={hintId} className="sr-only">
+          {metric.hint}
+        </span>
+      )}
       <Slider
         min={1}
         max={5}
@@ -35,20 +62,24 @@ export function MetricSlider({
         value={[display]}
         onValueChange={(next) => onChange(next[0] ?? 3)}
         aria-label={metric.label}
+        aria-describedby={hintId}
       />
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{metric.low}</span>
-        <span>{metric.high}</span>
+        <span>{metric.low} (1)</span>
+        <span>{metric.high} (5)</span>
       </div>
-      {optional && (
-        <button
+      {optional ? (
+        <Button
           type="button"
-          className="self-start text-xs text-muted-foreground underline-offset-2 hover:underline"
+          variant="outline"
+          size="sm"
+          className="self-start"
           onClick={() => onChange(null)}
+          disabled={skipped}
         >
-          Skip this scale
-        </button>
-      )}
+          {skipped ? "Skipped" : "Skip"}
+        </Button>
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { ObserverForm } from "@/components/acuity/observer-form";
 import { RoleGate } from "@/components/acuity/role-gate";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -46,6 +47,13 @@ function ObserverPage() {
               This observer account is not linked to anyone yet.
             </p>
           )}
+          <p className="text-sm text-muted-foreground">
+            Your observations over time are in{" "}
+            <Button asChild variant="link" className="h-auto px-0">
+              <Link to="/reports">reports</Link>
+            </Button>
+            .
+          </p>
         </div>
       )}
     </RoleGate>

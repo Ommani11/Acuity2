@@ -79,6 +79,11 @@ function inLivePreview(): boolean {
   );
 }
 
+/** Google provider id for this host: broker in the live preview, native on Vercel. */
+export function googleSignInProvider(): "google" | "grok-google" {
+  return inLivePreview() ? "grok-google" : "google";
+}
+
 /** Message the popup posts back to the opener once sign-in completes. */
 type PopupMessage = { source: "grok-auth-popup"; token: string | null; error?: string };
 
@@ -140,6 +145,18 @@ export async function signIn(
         window.location.href = callbackURL;
       }
     }
+    return;
+  }
+
+  // Deployed Vercel: native Google (GOOGLE_CLIENT_ID). Preview keeps the broker.
+  if (providerId === "google" || providerId === "grok-google") {
+    const { data, error } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL,
+      errorCallbackURL,
+    });
+    if (error) throw new Error(error.message ?? "Sign-in failed");
+    if (data?.url) window.location.href = data.url;
     return;
   }
 

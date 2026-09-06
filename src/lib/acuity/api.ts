@@ -7,8 +7,17 @@ import {
   type DailyLog,
   type ObserverLog,
   type PendingInvite,
+  type ReportDay,
+  type ReportPayload,
+  type ReportTitration,
   type TitrationProfile,
 } from "./types";
+import {
+  averageScores,
+  eachIsoDate,
+  scoresFromDaily,
+  scoresFromObserver,
+} from "./reports";
 
 function asNumber(value: unknown): number {
   if (typeof value === "number") return value;
@@ -328,6 +337,134 @@ export const getBootstrap = createServerFn({ method: "POST" })
       pendingInvite,
       todayLog,
       todayObservation,
+    };
+  });
+
+function requireRangeDate(value: unknown): string {
+  if (typeof value !== "string" || !isIsoDate(value)) {
+    throw new Error("Choose a valid date");
+  }
+  return value;
+}
+
+export const getReport = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((data: { from: string; to: string }) => data)
+  .handler(async ({ context, data }): Promise<ReportPayload> => {
+    const from = requireRangeDate(data.from);
+    const to = requireRangeDate(data.to);
+    if (from > to) throw new Error("The start date must be before the end date");
+    const span = eachIsoDate(from, to);
+    if (span.length > 120) throw new Error("Choose a shorter range");
+
+    const sql = await getDb();
+    const profile = await ensureProfile(sql, context.userId);
+    const canSeeSelf = profile.role === "primary";
+    const subjectId =
+      profile.role === "observer" ? profile.observesUserId : context.userId;
+    if (!subjectId) throw new Error("Observer is not linked to a subject");
+
+    const titrationRows = await sql<{
+      id: string;
+      medication_name: string;
+      dose_mg: unknown;
+      daily_frequency: unknown;
+      is_active: unknown;
+      started_on: unknown;
+      ended_on: unknown;
+    }>`
+      select id, medication_name, dose_mg, daily_frequency, is_active, started_on, ended_on
+      from titration_profiles
+      where user_id = ${subjectId}
+      order by started_on desc, created_at desc
+    `;
+    const titrations: ReportTitration[] = titrationRows.map((row) => ({
+      ...mapTitration(row),
+      endedOn: asNullableString(row.ended_on),
+    }));
+
+    const dailyByDate = new Map<string, DailyLog>();
+    if (canSeeSelf) {
+      const dailyRows = await sql<{
+        id: string;
+        log_date: unknown;
+        titration_profile_id: string;
+        executive_function: unknown;
+        hyperactivity: unknown;
+        mental_acuity: unknown;
+        focus: unknown;
+        mental_noise: unknown;
+        sleep: unknown;
+        crash: unknown;
+        medication_taken: unknown;
+        side_effects: unknown;
+        notes: unknown;
+      }>`
+        select id, log_date, titration_profile_id, executive_function, hyperactivity,
+               mental_acuity, focus, mental_noise, sleep, crash, medication_taken,
+               side_effects, notes
+        from daily_logs
+        where user_id = ${context.userId}
+          and log_date >= ${from}
+          and log_date <= ${to}
+        order by log_date asc
+      `;
+      for (const row of dailyRows) {
+        const log = mapDailyLog(row);
+        dailyByDate.set(log.logDate, log);
+      }
+    }
+
+    const observerRows = await sql<{
+      id: string;
+      log_date: unknown;
+      titration_profile_id: string;
+      executive_function: unknown;
+      hyperactivity: unknown;
+      mental_acuity: unknown;
+      focus: unknown;
+      mental_noise: unknown;
+      sleep: unknown;
+      crash: unknown;
+      notes: unknown;
+    }>`
+      select id, log_date, titration_profile_id, executive_function, hyperactivity,
+             mental_acuity, focus, mental_noise, sleep, crash, notes
+      from observer_logs
+      where subject_user_id = ${subjectId}
+        and log_date >= ${from}
+        and log_date <= ${to}
+        and (${canSeeSelf} or observer_user_id = ${context.userId})
+      order by log_date asc
+    `;
+    const observersByDate = new Map<string, ObserverLog[]>();
+    for (const row of observerRows) {
+      const log = mapObserverLog(row);
+      const list = observersByDate.get(log.logDate) ?? [];
+      list.push(log);
+      observersByDate.set(log.logDate, list);
+    }
+
+    const days: ReportDay[] = span.map((logDate) => {
+      const selfLog = dailyByDate.get(logDate) ?? null;
+      const observerLogs = observersByDate.get(logDate) ?? [];
+      return {
+        logDate,
+        self: selfLog ? scoresFromDaily(selfLog) : null,
+        observed: averageScores(observerLogs.map(scoresFromObserver)),
+        observerCount: observerLogs.length,
+        titrationId: selfLog?.titrationProfileId ?? observerLogs[0]?.titrationProfileId ?? null,
+        sideEffects: canSeeSelf ? selfLog?.sideEffects ?? null : null,
+      };
+    });
+
+    return {
+      role: profile.role,
+      canSeeSelf,
+      from,
+      to,
+      days,
+      titrations,
     };
   });
 

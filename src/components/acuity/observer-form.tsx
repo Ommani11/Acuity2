@@ -6,7 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { saveObserverLog } from "@/lib/acuity/api";
-import { METRICS, localDateIso, type MetricKey } from "@/lib/acuity/metrics";
+import {
+  OBSERVER_METRICS,
+  localDateIso,
+  type MetricKey,
+} from "@/lib/acuity/metrics";
 import type { LinkedPerson, ObserverLog, TitrationProfile } from "@/lib/acuity/types";
 
 type ObserverFormProps = {
@@ -25,9 +29,9 @@ export function ObserverForm({
     hyperactivity: initialLog?.hyperactivity ?? null,
     mental_acuity: initialLog?.mentalAcuity ?? null,
     focus: initialLog?.focus ?? null,
-    mental_noise: initialLog?.mentalNoise ?? null,
-    sleep: initialLog?.sleep ?? null,
-    crash: initialLog?.crash ?? null,
+    mental_noise: null,
+    sleep: null,
+    crash: null,
   });
   const [notes, setNotes] = useState(initialLog?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -37,7 +41,16 @@ export function ObserverForm({
     setSaving(true);
     try {
       await saveObserverLog({
-        data: { logDate, scores, notes },
+        data: {
+          logDate,
+          scores: {
+            ...scores,
+            mental_noise: null,
+            sleep: null,
+            crash: null,
+          },
+          notes,
+        },
       });
       toast.success("Observation saved");
     } catch (error) {
@@ -59,8 +72,9 @@ export function ObserverForm({
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6">
       <p className="text-sm text-muted-foreground">
-        Against {titration.medicationName} {titration.doseMg} mg. Skip any
-        scale you did not actually see.
+        Against {titration.medicationName} {titration.doseMg} mg. Rate only
+        what you saw. Mental noise, sleep, and crash are theirs to log — press
+        Skip on any remaining scale you did not actually see.
       </p>
       <div className="flex flex-col gap-2">
         <Label htmlFor="obs-date">Date</Label>
@@ -71,7 +85,7 @@ export function ObserverForm({
           onChange={(event) => setLogDate(event.target.value)}
         />
       </div>
-      {METRICS.map((metric) => (
+      {OBSERVER_METRICS.map((metric) => (
         <MetricSlider
           key={metric.key}
           metricKey={metric.key}

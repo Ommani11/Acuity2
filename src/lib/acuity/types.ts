@@ -71,6 +71,12 @@ export type ReportTitration = TitrationProfile & {
   endedOn: string | null;
 };
 
+export type ReportObserverEntry = {
+  observerName: string;
+  scores: Record<MetricKey, number | null>;
+  notes: string | null;
+};
+
 export type ReportDay = {
   logDate: string;
   self: Record<MetricKey, number> | null;
@@ -78,6 +84,9 @@ export type ReportDay = {
   observerCount: number;
   titrationId: string | null;
   sideEffects: string | null;
+  selfNotes: string | null;
+  medicationTaken: boolean | null;
+  observers: ReportObserverEntry[];
 };
 
 export type ReportPayload = {

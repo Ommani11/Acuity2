@@ -9,7 +9,7 @@ import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 type RoleGateProps = {
-  allow: UserRole;
+  allow: UserRole | UserRole[];
   children: (bootstrap: Bootstrap, reload: () => void) => ReactNode;
 };
 
@@ -69,7 +69,7 @@ export function RoleGate({ allow, children }: RoleGateProps) {
     );
   }
 
-  if (bootstrap.role !== allow) {
+  if (bootstrap.role !== allow && !(Array.isArray(allow) && allow.includes(bootstrap.role))) {
     return (
       <Navigate to={bootstrap.role === "observer" ? "/observer" : "/dashboard"} />
     );

@@ -26,10 +26,16 @@ export function AppShell({ children, role }: AppShellProps) {
             {role === "primary" && (
               <>
                 <NavLink to="/dashboard">Check-in</NavLink>
+                <NavLink to="/reports">Reports</NavLink>
                 <NavLink to="/treatment">Treatment</NavLink>
               </>
             )}
-            {role === "observer" && <NavLink to="/observer">Observe</NavLink>}
+            {role === "observer" && (
+              <>
+                <NavLink to="/observer">Observe</NavLink>
+                <NavLink to="/reports">Reports</NavLink>
+              </>
+            )}
           </nav>
           <div className="min-w-0 shrink-0">
             {isPending ? (
@@ -51,7 +57,7 @@ function NavLink({
   to,
   children,
 }: {
-  to: "/dashboard" | "/treatment" | "/observer";
+  to: "/dashboard" | "/treatment" | "/observer" | "/reports";
   children: ReactNode;
 }) {
   return (

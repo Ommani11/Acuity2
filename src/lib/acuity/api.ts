@@ -427,21 +427,29 @@ export const getReport = createServerFn({ method: "POST" })
       sleep: unknown;
       crash: unknown;
       notes: unknown;
+      observer_name: string | null;
+      observer_email: string;
     }>`
-      select id, log_date, titration_profile_id, executive_function, hyperactivity,
-             mental_acuity, focus, mental_noise, sleep, crash, notes
-      from observer_logs
-      where subject_user_id = ${subjectId}
-        and log_date >= ${from}
-        and log_date <= ${to}
-        and (${canSeeSelf} or observer_user_id = ${context.userId})
-      order by log_date asc
+      select o.id, o.log_date, o.titration_profile_id, o.executive_function, o.hyperactivity,
+             o.mental_acuity, o.focus, o.mental_noise, o.sleep, o.crash, o.notes,
+             u.name as observer_name, u.email as observer_email
+      from observer_logs o
+      join "user" u on u.id = o.observer_user_id
+      where o.subject_user_id = ${subjectId}
+        and o.log_date >= ${from}
+        and o.log_date <= ${to}
+        and (${canSeeSelf} or o.observer_user_id = ${context.userId})
+      order by o.log_date asc
     `;
-    const observersByDate = new Map<string, ObserverLog[]>();
+    const observersByDate = new Map<
+      string,
+      Array<{ log: ObserverLog; name: string }>
+    >();
     for (const row of observerRows) {
       const log = mapObserverLog(row);
+      const name = row.observer_name?.trim() || row.observer_email || "Observer";
       const list = observersByDate.get(log.logDate) ?? [];
-      list.push(log);
+      list.push({ log, name });
       observersByDate.set(log.logDate, list);
     }
 
@@ -451,10 +459,17 @@ export const getReport = createServerFn({ method: "POST" })
       return {
         logDate,
         self: selfLog ? scoresFromDaily(selfLog) : null,
-        observed: averageScores(observerLogs.map(scoresFromObserver)),
+        observed: averageScores(observerLogs.map((item) => scoresFromObserver(item.log))),
         observerCount: observerLogs.length,
-        titrationId: selfLog?.titrationProfileId ?? observerLogs[0]?.titrationProfileId ?? null,
+        titrationId: selfLog?.titrationProfileId ?? observerLogs[0]?.log.titrationProfileId ?? null,
         sideEffects: canSeeSelf ? selfLog?.sideEffects ?? null : null,
+        selfNotes: canSeeSelf ? selfLog?.notes ?? null : null,
+        medicationTaken: canSeeSelf ? (selfLog ? selfLog.medicationTaken : null) : null,
+        observers: observerLogs.map((item) => ({
+          observerName: item.name,
+          scores: scoresFromObserver(item.log),
+          notes: item.log.notes,
+        })),
       };
     });
 
@@ -711,6 +726,9 @@ export const saveObserverLog = createServerFn({ method: "POST" })
     for (const key of METRIC_KEYS) {
       scores[key] = optionalScore(data.scores?.[key], key.replaceAll("_", " "));
     }
+    scores.mental_noise = null;
+    scores.sleep = null;
+    scores.crash = null;
     const notes = data.notes?.trim() || null;
     const hasScore = METRIC_KEYS.some((key) => scores[key] != null);
     if (!hasScore && !notes) {

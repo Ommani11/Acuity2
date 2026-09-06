@@ -1,6 +1,6 @@
 import { createFileRoute, Link, Navigate, useSearch } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { GROK_PROVIDERS, authEnabled, signIn } from "@/lib/auth/client";
+import { authEnabled, googleSignInProvider, signIn } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 type LoginSearch = { next?: string };
@@ -42,18 +42,14 @@ function Login() {
       </p>
       <div className="mt-8 flex flex-col gap-3">
         {authEnabled ? (
-          GROK_PROVIDERS.map((provider) => (
-            <Button
-              key={provider.providerId}
-              type="button"
-              variant={provider.idp === "google" ? "default" : "outline"}
-              size="lg"
-              className="w-full"
-              onClick={() => signIn(provider.providerId, { callbackURL })}
-            >
-              Continue with {provider.label}
-            </Button>
-          ))
+          <Button
+            type="button"
+            size="lg"
+            className="w-full"
+            onClick={() => signIn(googleSignInProvider(), { callbackURL })}
+          >
+            Continue with Google
+          </Button>
         ) : (
           <p className="text-sm text-muted-foreground">Sign-in is disabled.</p>
         )}

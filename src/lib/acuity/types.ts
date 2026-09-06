@@ -1,0 +1,69 @@
+import type { MetricKey } from "./metrics";
+
+export type UserRole = "primary" | "observer";
+
+export const MAX_OBSERVERS = 8;
+
+export type TitrationProfile = {
+  id: string;
+  medicationName: string;
+  doseMg: number;
+  dailyFrequency: number;
+  isActive: boolean;
+  startedOn: string;
+};
+
+export type DailyLog = {
+  id: string;
+  logDate: string;
+  titrationProfileId: string;
+  executiveFunction: number;
+  hyperactivity: number;
+  mentalAcuity: number;
+  focus: number;
+  mentalNoise: number;
+  sleep: number;
+  crash: number;
+  medicationTaken: boolean;
+  sideEffects: string | null;
+  notes: string | null;
+};
+
+export type ObserverLog = {
+  id: string;
+  logDate: string;
+  titrationProfileId: string;
+  executiveFunction: number | null;
+  hyperactivity: number | null;
+  mentalAcuity: number | null;
+  focus: number | null;
+  mentalNoise: number | null;
+  sleep: number | null;
+  crash: number | null;
+  notes: string | null;
+};
+
+export type LinkedPerson = {
+  userId: string;
+  displayName: string;
+};
+
+export type PendingInvite = {
+  token: string;
+  expiresAt: string;
+};
+
+export type Bootstrap = {
+  role: UserRole;
+  userId: string;
+  displayName: string;
+  activeTitration: TitrationProfile | null;
+  subject: LinkedPerson | null;
+  observers: LinkedPerson[];
+  pendingInvite: PendingInvite | null;
+  todayLog: DailyLog | null;
+  todayObservation: ObserverLog | null;
+};
+
+export type MetricScores = Record<MetricKey, number>;
+export type OptionalMetricScores = Record<MetricKey, number | null>;

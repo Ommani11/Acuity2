@@ -65,5 +65,29 @@ export type Bootstrap = {
   todayObservation: ObserverLog | null;
 };
 
+export type ReportRangeDays = 7 | 14 | 28 | 90;
+
+export type ReportTitration = TitrationProfile & {
+  endedOn: string | null;
+};
+
+export type ReportDay = {
+  logDate: string;
+  self: Record<MetricKey, number> | null;
+  observed: Record<MetricKey, number | null> | null;
+  observerCount: number;
+  titrationId: string | null;
+  sideEffects: string | null;
+};
+
+export type ReportPayload = {
+  role: UserRole;
+  canSeeSelf: boolean;
+  from: string;
+  to: string;
+  days: ReportDay[];
+  titrations: ReportTitration[];
+};
+
 export type MetricScores = Record<MetricKey, number>;
 export type OptionalMetricScores = Record<MetricKey, number | null>;

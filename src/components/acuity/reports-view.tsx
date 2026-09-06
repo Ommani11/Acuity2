@@ -9,7 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import { getReport } from "@/lib/acuity/api";
-import { METRICS, localDateIso, type MetricKey } from "@/lib/acuity/metrics";
+import { METRICS, OBSERVER_METRICS, isObserverMetric, localDateIso, type MetricKey } from "@/lib/acuity/metrics";
 import {
   REPORT_RANGES,
   addDaysIso,
@@ -19,6 +19,7 @@ import {
   metricSeries,
 } from "@/lib/acuity/reports";
 import type { ReportPayload, ReportRangeDays, UserRole } from "@/lib/acuity/types";
+import { LogReview } from "@/components/acuity/log-review";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -64,7 +65,9 @@ export function ReportsView({ role }: ReportsViewProps) {
     };
   }, [from, to]);
 
-  const selected = METRICS.find((item) => item.key === metric) ?? METRICS[0];
+  const metricOptions = role === "observer" ? OBSERVER_METRICS : METRICS;
+  const selected = metricOptions.find((item) => item.key === metric) ?? metricOptions[0];
+  const showObserved = isObserverMetric(metric);
 
   const chartRows = useMemo(() => {
     if (!report) return [];
@@ -77,7 +80,9 @@ export function ReportsView({ role }: ReportsViewProps) {
   }, [report, metric]);
 
   const selfMean = report ? mean(metricSeries(report.days, metric, "self")) : null;
-  const observedMean = report ? mean(metricSeries(report.days, metric, "observed")) : null;
+  const observedMean = showObserved && report
+    ? mean(metricSeries(report.days, metric, "observed"))
+    : null;
   const recent = report ? metricSeries(report.days.slice(-7), metric, report.canSeeSelf ? "self" : "observed") : [];
   const previous = report
     ? metricSeries(report.days.slice(-14, -7), metric, report.canSeeSelf ? "self" : "observed")
@@ -91,7 +96,9 @@ export function ReportsView({ role }: ReportsViewProps) {
   const improved =
     delta == null ? null : higherIsBetter(metric) ? delta > 0 : delta < 0;
 
-  const hasPoints = chartRows.some((row) => row.self != null || row.observed != null);
+  const hasPoints = chartRows.some(
+    (row) => row.self != null || (showObserved && row.observed != null),
+  );
   const sideEffects =
     report?.canSeeSelf
       ? report.days.filter((day) => day.sideEffects).map((day) => ({
@@ -133,7 +140,7 @@ export function ReportsView({ role }: ReportsViewProps) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {METRICS.map((item) => (
+        {metricOptions.map((item) => (
           <Button
             key={item.key}
             type="button"
@@ -154,9 +161,9 @@ export function ReportsView({ role }: ReportsViewProps) {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>{selected.label}</CardTitle>
+            <CardTitle>{selected?.label}</CardTitle>
             <CardDescription>
-              {selected.low} → {selected.high}. Scale of 1 to 5.
+              {selected?.hint} Scale of 1 ({selected?.low}) to 5 ({selected?.high}).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -204,17 +211,19 @@ export function ReportsView({ role }: ReportsViewProps) {
                         connectNulls={false}
                       />
                     ) : null}
-                    <Line
-                      type="monotone"
-                      dataKey="observed"
-                      name="observed"
-                      stroke="var(--color-foreground)"
-                      strokeOpacity={0.45}
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      dot={false}
-                      connectNulls={false}
-                    />
+                    {showObserved ? (
+                      <Line
+                        type="monotone"
+                        dataKey="observed"
+                        name="observed"
+                        stroke="var(--color-foreground)"
+                        strokeOpacity={0.45}
+                        strokeWidth={2}
+                        strokeDasharray="5 5"
+                        dot={false}
+                        connectNulls={false}
+                      />
+                    ) : null}
                   </LineChart>
                 </ResponsiveContainer>
               </div>
@@ -232,12 +241,14 @@ export function ReportsView({ role }: ReportsViewProps) {
                   </span>
                 </p>
               ) : null}
-              <p>
-                Observer average{" "}
-                <span className="font-medium text-foreground">
-                  {observedMean ?? "—"}
-                </span>
-              </p>
+              {showObserved ? (
+                <p>
+                  Observer average{" "}
+                  <span className="font-medium text-foreground">
+                    {observedMean ?? "—"}
+                  </span>
+                </p>
+              ) : null}
               {delta != null ? (
                 <p>
                   Last 7 days{" "}
@@ -302,6 +313,10 @@ export function ReportsView({ role }: ReportsViewProps) {
             </ul>
           </CardContent>
         </Card>
+      ) : null}
+
+      {!loading && report ? (
+        <LogReview days={report.days} canSeeSelf={report.canSeeSelf} />
       ) : null}
     </div>
   );

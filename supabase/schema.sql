@@ -1,7 +1,8 @@
--- Acuity schema for Supabase Postgres.
--- Paste into the SQL Editor (or run via the CLI). British English throughout.
---
--- Sign-in uses Supabase Auth (Google). New accounts default to primary.
+-- DO NOT RUN THIS FILE against the Vercel DATABASE_URL.
+-- The live app uses Better Auth (`"user"` table, text ids) and
+-- migrations/0001–0003. This file was an unused Supabase Auth draft
+-- (uuid + auth.users) and will break sign-in if applied again.
+
 -- Several observers may watch one person (cap of eight). Observers cannot
 -- read the primary user's self-report daily logs.
 --

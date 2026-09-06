@@ -64,6 +64,11 @@ function DashboardPage() {
             <Button asChild variant="link" className="h-auto px-0">
               <Link to="/treatment">Open treatment</Link>
             </Button>
+            . See the pattern over days in{" "}
+            <Button asChild variant="link" className="h-auto px-0">
+              <Link to="/reports">reports</Link>
+            </Button>
+            .
           </p>
         </div>
       )}

@@ -15,12 +15,13 @@ type RoleGateProps = {
 
 export function RoleGate({ allow, children }: RoleGateProps) {
   const { user, isPending } = useCurrentUserState();
+  const userId = user?.id ?? null;
   const [bootstrap, setBootstrap] = useState<Bootstrap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setBootstrap(null);
       return;
     }
@@ -40,7 +41,7 @@ export function RoleGate({ allow, children }: RoleGateProps) {
     return () => {
       cancelled = true;
     };
-  }, [user, tick]);
+  }, [userId, tick]);
 
   if (isPending) {
     return (
